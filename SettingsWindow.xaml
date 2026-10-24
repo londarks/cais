@@ -1,0 +1,320 @@
+<Window x:Class="Cais.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Configurações do Cais" Width="1000" Height="760" MinWidth="860" MinHeight="560"
+        WindowStartupLocation="CenterScreen" Icon="Assets/cais.ico"
+        Background="{DynamicResource WinBg}" Foreground="{DynamicResource TextPrimary}"
+        FontFamily="{StaticResource UiFont}" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="248"/>
+      <ColumnDefinition/>
+    </Grid.ColumnDefinitions>
+
+    <!-- Navegação -->
+    <DockPanel Margin="12,12,12,16">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,4,0,20">
+        <Image Source="Assets/cais.png" Width="42" Height="42" RenderOptions.BitmapScalingMode="HighQuality"/>
+        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+          <TextBlock Text="Cais" FontSize="16" FontWeight="SemiBold"/>
+          <TextBlock Text="Dock para Windows" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+        </StackPanel>
+      </StackPanel>
+      <StackPanel DockPanel.Dock="Bottom" VerticalAlignment="Bottom">
+        <TextBlock Text="Dica: arraste um app ou pasta para cima do Dock para fixar. Clique com o botão direito no Dock para mais opções." TextWrapping="Wrap" FontSize="12" Margin="8,0,8,12" Foreground="{DynamicResource TextMuted}"/>
+        <Button Content="Sair do Cais" Style="{StaticResource Btn}" HorizontalAlignment="Stretch" Click="Exit_Click"/>
+      </StackPanel>
+      <StackPanel>
+        <RadioButton x:Name="NavLook" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE790;" Content="Aparência" IsChecked="True" Checked="Nav_Checked"/>
+        <RadioButton x:Name="NavBehavior" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE9E9;" Content="Comportamento" Checked="Nav_Checked"/>
+        <RadioButton x:Name="NavApps" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xECA5;" Content="Apps fixados" Checked="Nav_Checked"/>
+      </StackPanel>
+    </DockPanel>
+
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="8,18,28,28" MaxWidth="860">
+        <Grid Margin="0,0,0,14">
+          <TextBlock x:Name="PageTitle" Text="Aparência" FontSize="28" FontWeight="SemiBold"/>
+          <Button x:Name="ResetBtn" Content="Restaurar padrões" Style="{StaticResource Btn}" HorizontalAlignment="Right" VerticalAlignment="Center" Click="Reset_Click"/>
+        </Grid>
+
+        <!-- ───────── Aparência ───────── -->
+        <StackPanel x:Name="PageLook">
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Tema"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Vale para o Dock, os menus e esta janela"/>
+              </StackPanel>
+              <Border Grid.Column="1" Style="{StaticResource SegBox}">
+                <StackPanel Orientation="Horizontal">
+                  <RadioButton Style="{StaticResource Seg}" GroupName="theme" Tag="Escuro" Content="Escuro" Checked="Choice_Checked"/>
+                  <RadioButton Style="{StaticResource Seg}" GroupName="theme" Tag="Claro" Content="Claro" Checked="Choice_Checked"/>
+                  <RadioButton Style="{StaticResource Seg}" GroupName="theme" Tag="Sistema" Content="Igual ao Windows" Checked="Choice_Checked"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Tamanho dos ícones"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Ícones maiores são mais fáceis de clicar"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="SizeValue" Style="{StaticResource Value}"/>
+                <Slider x:Name="SizeSlider" Style="{StaticResource Fluent}" Minimum="32" Maximum="80" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Slider_Changed"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Cantos arredondados"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Do retângulo ao formato de cápsula"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="RadiusValue" Style="{StaticResource Value}"/>
+                <Slider x:Name="RadiusSlider" Style="{StaticResource Fluent}" Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Slider_Changed"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Efeito vidro"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Acrílico é o vidro do Windows 11; Desfoque é mais forte e limpo"/>
+              </StackPanel>
+              <Border Grid.Column="1" Style="{StaticResource SegBox}">
+                <StackPanel Orientation="Horizontal">
+                  <RadioButton Style="{StaticResource Seg}" GroupName="glass" Tag="Acrilico" Content="Acrílico" Checked="Choice_Checked"/>
+                  <RadioButton Style="{StaticResource Seg}" GroupName="glass" Tag="Desfoque" Content="Desfoque" Checked="Choice_Checked"/>
+                  <RadioButton Style="{StaticResource Seg}" GroupName="glass" Tag="Nenhum" Content="Nenhum" Checked="Choice_Checked"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Opacidade do fundo"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Menos opacidade deixa o papel de parede aparecer"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="OpacityValue" Style="{StaticResource Value}"/>
+                <Slider x:Name="OpacitySlider" Style="{StaticResource Fluent}" Minimum="0" Maximum="95" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Slider_Changed"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Cor do indicador"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="O pontinho embaixo dos apps abertos"/>
+              </StackPanel>
+              <StackPanel x:Name="SwatchPanel" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"/>
+            </Grid>
+          </Border>
+        </StackPanel>
+
+        <!-- ───────── Comportamento ───────── -->
+        <StackPanel x:Name="PageBehavior" Visibility="Collapsed">
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Posição na tela"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Em qual borda o Dock fica"/>
+              </StackPanel>
+              <Border Grid.Column="1" Style="{StaticResource SegBox}">
+                <StackPanel Orientation="Horizontal">
+                  <RadioButton Style="{StaticResource Seg}" GroupName="pos" Tag="Embaixo" Content="Embaixo" Checked="Choice_Checked"/>
+                  <RadioButton Style="{StaticResource Seg}" GroupName="pos" Tag="Esquerda" Content="Esquerda" Checked="Choice_Checked"/>
+                  <RadioButton Style="{StaticResource Seg}" GroupName="pos" Tag="Direita" Content="Direita" Checked="Choice_Checked"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Monitor"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Em qual tela o Dock aparece"/>
+              </StackPanel>
+              <Border Grid.Column="1" Style="{StaticResource SegBox}">
+                <StackPanel x:Name="MonitorPanel" Orientation="Horizontal"/>
+              </Border>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Ampliação ao passar o mouse"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="No mínimo, o efeito fica desligado"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="MagValue" Style="{StaticResource Value}"/>
+                <Slider x:Name="MagSlider" Style="{StaticResource Fluent}" Minimum="1" Maximum="2.2" TickFrequency="0.1" IsSnapToTickEnabled="True" ValueChanged="Slider_Changed"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Distância da borda"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Espaço entre o Dock e a borda da tela"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="MarginValue" Style="{StaticResource Value}"/>
+                <Slider x:Name="MarginSlider" Style="{StaticResource Fluent}" Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Slider_Changed"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Mostrar nome dos apps"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Etiqueta acima do ícone quando o mouse passa"/>
+              </StackPanel>
+              <CheckBox x:Name="LabelsSwitch" Grid.Column="1" Style="{StaticResource Switch}" VerticalAlignment="Center" Click="Switch_Click"/>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Mostrar apps abertos que não estão fixados"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Eles aparecem no fim da lista enquanto estiverem abertos"/>
+              </StackPanel>
+              <CheckBox x:Name="RunningSwitch" Grid.Column="1" Style="{StaticResource Switch}" VerticalAlignment="Center" Click="Switch_Click"/>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Relógio e bandeja no Dock"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Hora, data, rede e bateria. Clique nos ícones para as configurações rápidas e na hora para o calendário."/>
+              </StackPanel>
+              <CheckBox x:Name="ClockSwitch" Grid.Column="1" Style="{StaticResource Switch}" VerticalAlignment="Center" Click="Switch_Click"/>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Clima no Dock"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Temperatura e céu de agora, como o widget da barra do Windows. Clique nele para abrir os Widgets. Dados do Open-Meteo (gratuito, sem conta)."/>
+              </StackPanel>
+              <CheckBox x:Name="WeatherSwitch" Grid.Column="1" Style="{StaticResource Switch}" VerticalAlignment="Center" Click="Switch_Click"/>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Cidade do clima"/>
+                <TextBlock x:Name="WeatherStatusText" Style="{StaticResource RowDesc}"/>
+              </StackPanel>
+              <Border Grid.Column="1" Width="240" Height="34" VerticalAlignment="Center" CornerRadius="6" BorderThickness="1"
+                      Background="{DynamicResource SegBg}" BorderBrush="{DynamicResource CardBorder}">
+                <Grid Margin="10,0">
+                  <TextBlock x:Name="CityPlaceholder" Text="Automática (localização do Windows)" VerticalAlignment="Center" FontSize="13" Foreground="{DynamicResource TextMuted}" IsHitTestVisible="False"/>
+                  <TextBox x:Name="CityBox" VerticalAlignment="Center" FontSize="13" Background="Transparent" BorderThickness="0"
+                           Foreground="{DynamicResource TextPrimary}" CaretBrush="{DynamicResource TextPrimary}"
+                           AutomationProperties.Name="Cidade do clima"
+                           TextChanged="CityBox_TextChanged" LostFocus="CityBox_Commit" KeyDown="CityBox_KeyDown"/>
+                </Grid>
+              </Border>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Ocultar o Dock automaticamente"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Ele aparece quando o mouse encosta na borda da tela"/>
+              </StackPanel>
+              <CheckBox x:Name="AutoHideSwitch" Grid.Column="1" Style="{StaticResource Switch}" VerticalAlignment="Center" Click="Switch_Click"/>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Reservar espaço na tela"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Janelas maximizadas param acima do Dock, como no Mac"/>
+              </StackPanel>
+              <CheckBox x:Name="ReserveSwitch" Grid.Column="1" Style="{StaticResource Switch}" VerticalAlignment="Center" Click="Switch_Click"/>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Barra de tarefas do Windows"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Escondida: só o Dock no monitor dele (lá, os ícones da bandeja ficam inacessíveis); nos outros monitores a barra continua. Auto-ocultar: aparece ao encostar o mouse no rodapé."/>
+              </StackPanel>
+              <Border Grid.Column="1" Style="{StaticResource SegBox}">
+                <StackPanel Orientation="Horizontal">
+                  <RadioButton Style="{StaticResource Seg}" GroupName="taskbar" Tag="Esconder" Content="Escondida" Checked="Choice_Checked"/>
+                  <RadioButton Style="{StaticResource Seg}" GroupName="taskbar" Tag="AutoOcultar" Content="Auto-ocultar" Checked="Choice_Checked"/>
+                  <RadioButton Style="{StaticResource Seg}" GroupName="taskbar" Tag="Normal" Content="Normal" Checked="Choice_Checked"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource RowTitle}" Text="Iniciar com o Windows"/>
+                <TextBlock Style="{StaticResource RowDesc}" Text="Abre o Cais assim que você entra na conta"/>
+              </StackPanel>
+              <CheckBox x:Name="StartupSwitch" Grid.Column="1" Style="{StaticResource Switch}" VerticalAlignment="Center" Click="Switch_Click"/>
+            </Grid>
+          </Border>
+        </StackPanel>
+
+        <!-- ───────── Apps fixados ───────── -->
+        <StackPanel x:Name="PageApps" Visibility="Collapsed">
+          <Grid Margin="0,0,0,12">
+            <TextBlock x:Name="AppsCount" VerticalAlignment="Center" FontSize="13" Foreground="{DynamicResource TextMuted}"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+              <Button Content="Importar da barra do Windows" Style="{StaticResource Btn}" Margin="0,0,8,0" Click="Import_Click"/>
+              <Button Content="Adicionar app…" Style="{StaticResource AccentBtn}" Click="Add_Click"/>
+            </StackPanel>
+          </Grid>
+          <StackPanel x:Name="AppsList"/>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>
