@@ -20,6 +20,8 @@ namespace Cais
         public bool IsDay = true;
         public string Description;
         public string Place;
+        public double Latitude, Longitude;
+        public bool FromWindowsLocation;
     }
 
     /// <summary>
@@ -30,12 +32,18 @@ namespace Cais
     {
         static readonly Dictionary<string, Tuple<double, double, string>> cityCache = new Dictionary<string, Tuple<double, double, string>>(StringComparer.OrdinalIgnoreCase);
 
-        public static Task<WeatherInfo> FetchAsync(string city) => Task.Run(() => Fetch(city));
+        public static Task<WeatherInfo> FetchAsync(string city, double? lastLat, double? lastLon) => Task.Run(() => Fetch(city, lastLat, lastLon));
 
-        static WeatherInfo Fetch(string city)
+        static WeatherInfo Fetch(string city, double? lastLat, double? lastLon)
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-            var place = Locate(city);
+            Tuple<double, double, string> place;
+            bool fromWindows = string.IsNullOrWhiteSpace(city);
+            try { place = Locate(city); }
+            catch (InvalidOperationException) when (fromWindows && lastLat.HasValue && lastLon.HasValue)
+            {
+                place = Tuple.Create(lastLat.Value, lastLon.Value, "Sua localização");
+            }
             string url = string.Format(CultureInfo.InvariantCulture,
                 "https://api.open-meteo.com/v1/forecast?latitude={0:0.####}&longitude={1:0.####}&current=temperature_2m,weather_code,is_day&timezone=auto",
                 place.Item1, place.Item2);
@@ -50,6 +58,9 @@ namespace Cais
                 Sky = sky,
                 Description = Describe(code),
                 Place = place.Item3,
+                Latitude = place.Item1,
+                Longitude = place.Item2,
+                FromWindowsLocation = fromWindows,
             };
         }
 
@@ -72,7 +83,7 @@ namespace Cais
 
             using (var watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.Default))
             {
-                if (watcher.TryStart(false, TimeSpan.FromSeconds(4)))
+                if (watcher.TryStart(false, TimeSpan.FromSeconds(8)))
                 {
                     var loc = watcher.Position.Location;
                     if (!loc.IsUnknown) return Tuple.Create(loc.Latitude, loc.Longitude, "Sua localização");

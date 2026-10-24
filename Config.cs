@@ -34,6 +34,9 @@ namespace Cais
         public bool ShowWeather { get; set; } = true;
         /// <summary>Vazio = localização do Windows.</summary>
         public string WeatherCity { get; set; } = "";
+        /// <summary>Última localização do Windows que funcionou (o serviço de localização às vezes demora a responder).</summary>
+        public double? LastLatitude { get; set; }
+        public double? LastLongitude { get; set; }
         public bool ShowRunning { get; set; } = true;
         public bool AutoHide { get; set; } = false;
         public bool ReserveSpace { get; set; } = true;

@@ -196,6 +196,7 @@ namespace Cais
             ApplyConfigCore();
             win.Show();
             PlaceWindows();
+            back.Above = win.Handle;
             back.PlaceBelow(win.Handle);
 
             if (args.Contains("--bench"))
@@ -475,9 +476,7 @@ namespace Cais
             settings?.ApplyTitleBar();
 
             var tint = IsDark ? Color.FromRgb(24, 26, 34) : Color.FromRgb(246, 247, 250);
-            byte alpha = (byte)Math.Round(Config.Opacity / 100.0 * 255);
-            bg.Background = Frozen(new SolidColorBrush(Color.FromArgb(alpha, tint.R, tint.G, tint.B)));
-            rim.BorderBrush = Frozen(new SolidColorBrush(Color.FromArgb((byte)Math.Min(255, alpha + 70), tint.R, tint.G, tint.B)));
+            ApplyTint();
             rimDirty = true;   // recalcula a borda interna no próximo quadro
             bg.BorderBrush = Frozen(new SolidColorBrush(IsDark ? Color.FromArgb(0x30, 255, 255, 255) : Color.FromArgb(0xB4, 255, 255, 255)));
             shadowW = -1;   // a sombra (imagem pré-renderizada) é refeita no próximo quadro
@@ -583,6 +582,12 @@ namespace Cais
             windowsHidden = !show;
             Native.ShowWindow(win.Handle, show ? Native.SW_SHOWNA : Native.SW_HIDE);
             if (!show) back.SetShown(false);
+            else
+            {
+                // volta para cima de tudo (alguns jogos se marcam como "sempre no topo")
+                Native.SetWindowPos(win.Handle, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+                back.PlaceBelow(win.Handle);
+            }
         }
 
         void ReassertTopmost()
@@ -684,43 +689,76 @@ namespace Cais
         /// Olha a janela de app mais à frente NAQUELE monitor, e não a que tem o foco: assim, dar Alt+Tab
         /// do jogo para outro monitor não faz o Dock aparecer e sumir por cima do jogo.
         /// </summary>
-        bool MonitorCoveredByFullscreen()
+        bool MonitorCoveredByFullscreen(out bool fullscreenBehind)
         {
+            fullscreenBehind = false;
             if (mon == null) return false;
             var b = mon.Bounds;
-            bool covered = false;
+            bool covered = false, first = true, behind = false;
             Native.EnumWindows((h, l) =>
             {
                 if (h == win.Handle || h == back.Handle || Native.IsIconic(h) || !WindowTracker.IsAppWindow(h)) return true;
                 if (!Native.GetWindowRect(h, out var r)) return true;
                 if (r.Right <= b.Left || r.Left >= b.Right || r.Bottom <= b.Top || r.Top >= b.Bottom) return true;   // outro monitor
-                covered = !Native.IsZoomed(h) && r.Left <= b.Left && r.Top <= b.Top && r.Right >= b.Right && r.Bottom >= b.Bottom;
-                return false;   // só importa a janela mais à frente neste monitor
+                bool fs = !Native.IsZoomed(h) && r.Left <= b.Left && r.Top <= b.Top && r.Right >= b.Right && r.Bottom >= b.Bottom;
+                if (first) { covered = fs; first = false; }
+                if (fs) { behind = true; return false; }   // achou um jogo/vídeo em tela cheia neste monitor
+                return true;
             }, IntPtr.Zero);
+            fullscreenBehind = behind;
+            // Menu Iniciar, pesquisa, central de notificações e Widgets mostram o Dock, como fazem com a barra do Windows
+            if (covered && ShellFlyoutOpen()) covered = false;
             return covered;
         }
 
         DispatcherTimer fullscreenTimer;
+        bool fullscreenBehind;
 
-        /// <summary>Muda o estado só se ele continuar igual por um instante (evita piscar durante o Alt+Tab).</summary>
+        /// <summary>
+        /// Esconde o Dock quando um jogo/vídeo em tela cheia cobre o monitor dele. A troca só acontece se o estado
+        /// se mantiver por um instante (evita piscar no Alt+Tab): 0,15 s para aparecer e 0,35 s para sumir.
+        /// </summary>
         void UpdateFullscreen()
         {
             if (snapshot) return;
-            bool fs = MonitorCoveredByFullscreen();
+            bool fs = MonitorCoveredByFullscreen(out bool behind);
+            if (behind != fullscreenBehind)
+            {
+                fullscreenBehind = behind;
+                ApplyTint();
+                StartLoop();
+            }
             if (fs == fullscreen) { fullscreenTimer?.Stop(); return; }
             if (fullscreenTimer == null)
             {
-                fullscreenTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+                fullscreenTimer = new DispatcherTimer();
                 fullscreenTimer.Tick += (s, e) =>
                 {
                     fullscreenTimer.Stop();
-                    bool now = MonitorCoveredByFullscreen();
+                    bool now = MonitorCoveredByFullscreen(out bool b2);
+                    if (b2 != fullscreenBehind) { fullscreenBehind = b2; ApplyTint(); }
                     if (now == fullscreen) return;
                     fullscreen = now;
                     StartLoop();
                 };
             }
-            if (!fullscreenTimer.IsEnabled) fullscreenTimer.Start();
+            if (fullscreenTimer.IsEnabled) return;
+            fullscreenTimer.Interval = TimeSpan.FromMilliseconds(fs ? 350 : 150);
+            fullscreenTimer.Start();
+        }
+
+        /// <summary>
+        /// Fundo do Dock. Com um jogo em tela cheia por trás, o desfoque do Windows não tem o que desfocar e fica preto,
+        /// então o vidro sai e o fundo fica mais opaco.
+        /// </summary>
+        void ApplyTint()
+        {
+            var tint = IsDark ? Color.FromRgb(24, 26, 34) : Color.FromRgb(246, 247, 250);
+            double opacity = Config.Opacity / 100.0;
+            if (fullscreenBehind || Config.Glass == "Nenhum") opacity = Math.Max(opacity, 0.82);
+            byte alpha = (byte)Math.Round(opacity * 255);
+            bg.Background = Frozen(new SolidColorBrush(Color.FromArgb(alpha, tint.R, tint.G, tint.B)));
+            rim.BorderBrush = Frozen(new SolidColorBrush(Color.FromArgb((byte)Math.Min(255, alpha + 70), tint.R, tint.G, tint.B)));
         }
 
         // ───────────────────────── janelas abertas ─────────────────────────
@@ -735,10 +773,11 @@ namespace Cais
             if (ev == 0x8002 && Config.TaskbarMode == "Esconder" && mon != null)
             {
                 string cls = Native.ClassOf(hWnd);
-                if ((cls == "Shell_TrayWnd" || cls == "Shell_SecondaryTrayWnd") && !ShellFlyoutOpen())
+                if (cls == "Shell_TrayWnd" || cls == "Shell_SecondaryTrayWnd")
                     Taskbar.HideOnly(mon.Handle);
             }
 
+            if (ev == 3) UpdateFullscreen();   // troca de foco: reage na hora (ex.: tecla Windows sobre um jogo)
             refreshTimer.Stop();
             refreshTimer.Start();
         }
@@ -769,7 +808,7 @@ namespace Cais
             UpdateFullscreen();
             UpdateStatus(slowTicks % 5 == 1);
             // O Windows às vezes mostra a barra de novo (ex.: ao reservar espaço); esconde outra vez.
-            if (Config.TaskbarMode == "Esconder" && mon != null && Taskbar.VisibleOn(mon.Handle) && !ShellFlyoutOpen())
+            if (Config.TaskbarMode == "Esconder" && mon != null && Taskbar.VisibleOn(mon.Handle))
                 Taskbar.HideOnly(mon.Handle);
             if (slowTicks % 5 == 0) ReassertTopmost();
             if (slowTicks % 10 == 0 && pool.TryGetValue("trash", out var trash) && trash.Visual is Image img)
@@ -788,7 +827,8 @@ namespace Cais
             Native.GetWindowThreadProcessId(fg, out uint pid);
             string p = Native.GetProcessPath(pid) ?? "";
             string n = Path.GetFileNameWithoutExtension(p).ToLowerInvariant();
-            return n == "startmenuexperiencehost" || n == "searchhost" || n == "shellexperiencehost" || n == "shellhost";
+            return n == "startmenuexperiencehost" || n == "searchhost" || n == "shellexperiencehost" || n == "shellhost"
+                || n == "widgets" || n == "widgetboard";
         }
 
         string ResolveTarget(PinnedApp pin)
@@ -1063,9 +1103,15 @@ namespace Cais
             settings?.UpdateWeatherStatus();
             try
             {
-                var w = await Weather.FetchAsync(Config.WeatherCity);
+                var w = await Weather.FetchAsync(Config.WeatherCity, Config.LastLatitude, Config.LastLongitude);
                 if (id != weatherRequest) return;
                 weather = w;
+                if (w.FromWindowsLocation && (Config.LastLatitude != w.Latitude || Config.LastLongitude != w.Longitude))
+                {
+                    Config.LastLatitude = w.Latitude;
+                    Config.LastLongitude = w.Longitude;
+                    ScheduleSave();
+                }
                 WeatherStatus = string.Format("{0} · {1:0} °C, {2} · atualizado às {3:HH:mm}", w.Place, w.Temperature, w.Description.ToLowerInvariant(), DateTime.Now);
                 weatherTimer.Interval = TimeSpan.FromMinutes(20);
             }
@@ -1429,7 +1475,7 @@ namespace Cais
         void UpdateBackdrop(Rect r, double corner)
         {
             if (snapshot) return;
-            bool show = Config.Glass != "Nenhum" && hideAmt < 0.98 && !windowsHidden;
+            bool show = Config.Glass != "Nenhum" && !fullscreenBehind && hideAmt < 0.98 && !windowsHidden;
             back.SetShown(show);
             if (!show) return;
             int x = strip.Left + (int)Math.Round(r.X * scale), y = strip.Top + (int)Math.Round(r.Y * scale);

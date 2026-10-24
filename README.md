@@ -34,7 +34,7 @@
 - **Arraste e solte** qualquer app, atalho ou pasta em cima do Dock para fixar
 - **Embaixo, à esquerda ou à direita**, em qualquer monitor; encolhe sozinho quando há apps demais
 - **Reserva de espaço**: janelas maximizadas param acima do Dock, como no Mac
-- **Some em jogos e vídeos em tela cheia** e volta quando você sai deles (sem piscar no Alt+Tab)
+- **Some em jogos e vídeos em tela cheia** e volta quando você sai deles ou aperta a tecla Windows, sem piscar no Alt+Tab
 - **Barra de tarefas do Windows** escondida, em auto-ocultar ou normal; nos outros monitores ela continua
 - **Temas escuro, claro ou igual ao Windows**; tudo muda na hora, sem reiniciar
 

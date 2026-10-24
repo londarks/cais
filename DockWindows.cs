@@ -77,6 +77,8 @@ namespace Cais
         static Native.WndProc proc;
 
         public IntPtr Handle { get; private set; }
+        /// <summary>Janela dos ícones: o vidro fica sempre logo atrás dela.</summary>
+        public IntPtr Above;
         int lx = int.MinValue, ly, lw, lh, lr = -1, corner = -1;
         bool shown;
 
@@ -155,7 +157,10 @@ namespace Cais
                 int noBorder = unchecked((int)0xFFFFFFFE);
                 Native.DwmSetWindowAttribute(Handle, 34, ref noBorder, 4);
             }
-            Native.SetWindowPos(Handle, IntPtr.Zero, x, y, w, h, Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+            // Reposiciona já garantindo a ordem: se o vidro (fundo preto por baixo do desfoque) passar
+            // para a frente da janela dos ícones, o Dock aparece como um retângulo preto.
+            uint flags = Native.SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | (Above == IntPtr.Zero ? Native.SWP_NOZORDER : 0);
+            Native.SetWindowPos(Handle, Above, x, y, w, h, flags);
         }
 
         /// <summary>Coloca o vidro logo atrás da janela dos ícones.</summary>
@@ -170,6 +175,7 @@ namespace Cais
             if (Handle == IntPtr.Zero || show == shown) return;
             shown = show;
             Native.ShowWindowAsync(Handle, show ? Native.SW_SHOWNA : Native.SW_HIDE);
+            if (show && Above != IntPtr.Zero) PlaceBelow(Above);
         }
     }
 }
