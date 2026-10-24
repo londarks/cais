@@ -187,6 +187,11 @@ namespace Cais
             win = new DockWindow();
             win.EnsureHandle();
             win.OnMessage = HandleMessage;
+            preview = new PreviewWindow();
+            preview.EnsureHandle();
+            preview.OnPick = h => { HidePreview(); Activate(h); ScheduleRefresh(); };
+            preview.OnCloseWindow = h => { Native.PostMessage(h, Native.WM_CLOSE, IntPtr.Zero, IntPtr.Zero); ScheduleRefresh(); };
+            testPreview = args.Contains("--teste-janelas");
             win.PreviewMouseDown += OnMouseDown;
             win.PreviewMouseUp += OnMouseUp;
             win.DragEnter += OnDragOver;
@@ -198,6 +203,19 @@ namespace Cais
             PlaceWindows();
             back.Above = win.Handle;
             back.PlaceBelow(win.Handle);
+
+            if (testPreview)
+            {
+                // abre a aba de janelas do primeiro app com mais janelas, sem precisar do mouse
+                var open = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+                open.Tick += (s, e) =>
+                {
+                    open.Stop();
+                    var target = entries.Where(x => x.Kind == EntryKind.App && x.Windows.Count > 0).OrderByDescending(x => x.Windows.Count).FirstOrDefault();
+                    if (target != null) ShowPreview(target);
+                };
+                open.Start();
+            }
 
             if (args.Contains("--bench"))
             {
@@ -448,6 +466,7 @@ namespace Cais
             cleaned = true;
             try { saveTimer?.Stop(); Config?.Save(); } catch { }
             try { RemoveAppBar(); } catch { }
+            try { HidePreview(); } catch { }
             try { Taskbar.SetVisible(true); } catch { }
             foreach (var h in hooks) if (h != IntPtr.Zero) Native.UnhookWinEvent(h);
             hooks.Clear();
@@ -471,6 +490,7 @@ namespace Cais
         void ApplyConfigCore()
         {
             Config.Normalize();
+            HidePreview();
             IsDark = Palette.IsDark(Config);
             Palette.ApplyBrushes(Application.Current.Resources, IsDark);
             settings?.ApplyTitleBar();
@@ -581,7 +601,7 @@ namespace Cais
             if (show == !windowsHidden) return;
             windowsHidden = !show;
             Native.ShowWindow(win.Handle, show ? Native.SW_SHOWNA : Native.SW_HIDE);
-            if (!show) back.SetShown(false);
+            if (!show) { back.SetShown(false); HidePreview(); }
             else
             {
                 // volta para cima de tudo (alguns jogos se marcam como "sempre no topo")
@@ -698,8 +718,7 @@ namespace Cais
             Native.EnumWindows((h, l) =>
             {
                 if (h == win.Handle || h == back.Handle || Native.IsIconic(h) || !WindowTracker.IsAppWindow(h)) return true;
-                if (!Native.GetWindowRect(h, out var r)) return true;
-                if (r.Right <= b.Left || r.Left >= b.Right || r.Bottom <= b.Top || r.Top >= b.Bottom) return true;   // outro monitor
+                if (Native.MonitorFromWindow(h, 2) != mon.Handle || !Native.GetWindowRect(h, out var r)) return true;   // outro monitor
                 bool fs = !Native.IsZoomed(h) && r.Left <= b.Left && r.Top <= b.Top && r.Right >= b.Right && r.Bottom >= b.Bottom;
                 if (first) { covered = fs; first = false; }
                 if (fs) { behind = true; return false; }   // achou um jogo/vídeo em tela cheia neste monitor
@@ -797,6 +816,7 @@ namespace Cais
                     if (!runningOrder.Contains(k, StringComparer.OrdinalIgnoreCase)) runningOrder.Add(k);
                 runningOrder.RemoveAll(k => !tracked.ContainsKey(k));
                 RebuildEntries(false);
+                SyncPreview();
             }
             catch (Exception ex) { App.Log(ex); }
         }
@@ -1244,7 +1264,7 @@ namespace Cais
             var p = new Point((pt.X - strip.Left) / scale, (pt.Y - strip.Top) / scale);
             u = Horizontal ? p.X : p.Y;
             double v = Config.Position == "Esquerda" ? p.X : Config.Position == "Direita" ? winW - p.X : winH - p.Y;
-            atEdge = v <= 2.5 && u >= bgU0 - 60 && u <= bgU1 + 60;
+            atEdge = v <= 2.5;   // em qualquer ponto da borda, como a barra do Windows em auto-ocultar
             if (hideAmt > 0.9) return false;
             double reach = bgV0 + Cross + iconS * (Math.Max(1, Config.Magnification) - 1) * hover + 6;
             return u >= bgU0 - 4 && u <= bgU1 + 4 && v <= reach;
@@ -1275,14 +1295,16 @@ namespace Cais
                 inside = true;
                 cu = baseCenter + baseHalf * 0.9 * Math.Sin(2 * Math.PI * (t - benchFrom) / 2.4);
             }
-            if (menuOpen) inside = true;
+            bool overDock = inside;
+            bool overPreview = preview != null && preview.ContainsCursor();
+            if (menuOpen || overPreview) inside = true;   // com o menu ou a aba de janelas aberta, o Dock fica como está
             else
             {
                 if (inside) mouseU = cu;
                 hover = Approach(hover, inside ? 1 : 0, dt, 11);
             }
             if (inside) lastInsideT = t;
-            if (!benching) win.SetClickThrough(!inside);
+            if (!benching) win.SetClickThrough(!overDock && !menuOpen);
 
             double hideTarget = 0;
             if (fullscreen) hideTarget = 1;
@@ -1291,10 +1313,11 @@ namespace Cais
 
             bool bouncing = Layout(t);
             if (fullscreen && hideAmt >= 1) ShowWindows(false);
+            PreviewLogic(t, overPreview);
             if (benching) BenchFrame(t, (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency);
 
             bool settled = !bouncing && hideAmt == hideTarget && (hover == 0 || hover == 1);
-            if (settled && !inside) StopLoop();
+            if (settled && !inside && !(preview != null && preview.IsShown)) StopLoop();
         }
 
         Rect MakeRect(double u, double v, double lu, double lv)
@@ -1447,7 +1470,9 @@ namespace Cais
                 cu += e.Size + gap;
             }
 
-            if (tipEntry != null)
+            hoverIcon = tipEntry;
+            if (preview != null && preview.IsShown) tipLabel = null;   // a aba de janelas já mostra o nome
+            else if (tipEntry != null)
             {
                 var b = tipEntry.Bounds;
                 tipLabel = tipEntry.Name;
@@ -1520,6 +1545,7 @@ namespace Cais
 
         void Click(DockEntry e, Point p, bool shift)
         {
+            HidePreview();
             switch (e.Kind)
             {
                 case EntryKind.Start:
@@ -1550,6 +1576,74 @@ namespace Cais
                     ScheduleRefresh();
                     break;
             }
+        }
+
+        // ───────────────────────── aba de janelas ─────────────────────────
+
+        PreviewWindow preview;
+        DockEntry hoverIcon, hoverCandidate;
+        double hoverSince, previewCloseAt;
+        bool testPreview;
+
+        /// <summary>Abre a aba depois de 0,45 s sobre um app aberto, troca na hora entre apps e fecha 0,3 s depois que o mouse sai.</summary>
+        void PreviewLogic(double t, bool overPreview)
+        {
+            if (preview == null || testPreview) return;
+            var under = hover > 0.5 && !menuOpen && !overPreview ? hoverIcon : null;
+            if (under != hoverCandidate) { hoverCandidate = under; hoverSince = t; }
+            bool hasWindows = under != null && under.Kind == EntryKind.App && under.Windows.Count > 0;
+            if (preview.IsShown)
+            {
+                if (overPreview || hasWindows)
+                {
+                    previewCloseAt = 0;
+                    if (hasWindows && under != preview.Entry) ShowPreview(under);
+                    return;
+                }
+                if (previewCloseAt == 0) previewCloseAt = t + 0.3;
+                else if (t >= previewCloseAt) HidePreview();
+            }
+            else if (hasWindows && t - hoverSince >= 0.45) ShowPreview(under);
+        }
+
+        void ShowPreview(DockEntry e)
+        {
+            var wins = e.Windows.Where(Native.IsWindow).Take(8).ToList();
+            if (wins.Count == 0 || mon == null) { HidePreview(); return; }
+            preview.ApplyTheme(IsDark, scale);
+            var size = preview.Build(e, wins, (e.Visual as Image)?.Source, Horizontal);
+            double wpx = size.Width * scale, hpx = size.Height * scale;
+            var b = e.Bounds;
+            double cu = Horizontal ? b.X + b.Width / 2 : b.Y + b.Height / 2;
+            double far = bgV0 + Cross + iconS * (Math.Max(1, Config.Magnification) - 1) + 14;   // acima dos ícones ampliados
+            double x, y;
+            switch (Config.Position)
+            {
+                case "Esquerda": x = strip.Left + far * scale; y = strip.Top + cu * scale - hpx / 2; break;
+                case "Direita": x = strip.Left + (winW - far) * scale - wpx; y = strip.Top + cu * scale - hpx / 2; break;
+                default: x = strip.Left + cu * scale - wpx / 2; y = strip.Top + (winH - far) * scale - hpx; break;
+            }
+            var mb = mon.Bounds;
+            x = Math.Max(mb.Left + 8, Math.Min(mb.Right - 8 - wpx, x));
+            y = Math.Max(mb.Top + 8, Math.Min(mb.Bottom - 8 - hpx, y));
+            preview.ShowAt((int)Math.Round(x), (int)Math.Round(y), size);
+            previewCloseAt = 0;
+            StartLoop();
+        }
+
+        void HidePreview()
+        {
+            preview?.HidePreview();
+            previewCloseAt = 0;
+        }
+
+        /// <summary>Se uma janela abriu ou fechou enquanto a aba está aberta, atualiza os cartões.</summary>
+        void SyncPreview()
+        {
+            if (preview == null || !preview.IsShown || preview.Entry == null) return;
+            var e = preview.Entry;
+            if (!entries.Contains(e) || e.Windows.Count == 0) { HidePreview(); return; }
+            if (!new HashSet<IntPtr>(preview.Windows).SetEquals(e.Windows.Take(8))) ShowPreview(e);
         }
 
         void Bounce(DockEntry e)
@@ -1607,6 +1701,7 @@ namespace Cais
 
         void ShowMenu(DockEntry e)
         {
+            HidePreview();
             var m = new ContextMenu { FontFamily = UiFont };
             if (e != null && e.Kind == EntryKind.App)
             {

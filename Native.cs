@@ -121,6 +121,27 @@ namespace Cais
         [DllImport("user32.dll")] public static extern int SetWindowRgn(IntPtr hWnd, IntPtr region, bool redraw);
 
         public const long WS_EX_TOPMOST = 0x8;
+
+        // Miniaturas ao vivo das janelas (a mesma API das prévias da barra de tarefas)
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DWM_THUMBNAIL_PROPERTIES
+        {
+            public int dwFlags;
+            public RECT rcDestination;
+            public RECT rcSource;
+            public byte opacity;
+            [MarshalAs(UnmanagedType.Bool)] public bool fVisible;
+            [MarshalAs(UnmanagedType.Bool)] public bool fSourceClientAreaOnly;
+        }
+        [StructLayout(LayoutKind.Sequential)] public struct SIZE { public int cx, cy; }
+        [DllImport("dwmapi.dll")] public static extern int DwmRegisterThumbnail(IntPtr destination, IntPtr source, out IntPtr thumbnail);
+        [DllImport("dwmapi.dll")] public static extern int DwmUnregisterThumbnail(IntPtr thumbnail);
+        [DllImport("dwmapi.dll")] public static extern int DwmUpdateThumbnailProperties(IntPtr thumbnail, ref DWM_THUMBNAIL_PROPERTIES props);
+        [DllImport("dwmapi.dll")] public static extern int DwmQueryThumbnailSourceSize(IntPtr thumbnail, out SIZE size);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MARGINS { public int Left, Right, Top, Bottom; }
+        [DllImport("dwmapi.dll")] public static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS margins);
         [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int cmd);
 
         // Janela Win32 crua (usada para o vidro), com seu próprio laço de mensagens

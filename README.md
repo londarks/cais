@@ -28,12 +28,13 @@
 - **Vidro de verdade**: acrílico ou desfoque do próprio Windows atrás do Dock, com cantos arredondados
 - **Fluido em monitores rápidos**: anima a 144 fps num monitor de 144 Hz e não gasta nada parado
 - **Pontinho nos apps abertos**; apps abertos que não estão fixados aparecem no fim da lista
+- **Miniaturas das janelas**: pare o mouse num app aberto e escolha qual janela abrir (ex.: três terminais lado a lado), com o X para fechar, igual à barra do Windows
 - **Clique inteligente**: abre o app; se já está aberto, traz para a frente; se já está na frente, minimiza; com várias janelas, alterna entre elas
 - **Clima, relógio, rede e bateria** no próprio Dock, como na barra do Windows (clique no clima para os Widgets, nos ícones para as configurações rápidas e na hora para o calendário)
 - **Apps da Microsoft Store**: fixe Calculadora, Terminal, Fotos etc. pelo seletor de apps instalados
 - **Arraste e solte** qualquer app, atalho ou pasta em cima do Dock para fixar
 - **Embaixo, à esquerda ou à direita**, em qualquer monitor; encolhe sozinho quando há apps demais
-- **Reserva de espaço**: janelas maximizadas param acima do Dock, como no Mac
+- **Ocultar automaticamente**: o Dock some e volta quando o mouse encosta na borda, sem tirar espaço das janelas; ou **reserve o espaço** para as janelas maximizadas pararem acima dele, como no Mac
 - **Some em jogos e vídeos em tela cheia** e volta quando você sai deles ou aperta a tecla Windows, sem piscar no Alt+Tab
 - **Barra de tarefas do Windows** escondida, em auto-ocultar ou normal; nos outros monitores ela continua
 - **Temas escuro, claro ou igual ao Windows**; tudo muda na hora, sem reiniciar
