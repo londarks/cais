@@ -189,7 +189,7 @@ namespace Cais
             win.OnMessage = HandleMessage;
             preview = new PreviewWindow();
             preview.EnsureHandle();
-            preview.OnPick = h => { HidePreview(); Activate(h); ScheduleRefresh(); };
+            preview.OnPick = h => { suppressPreview = preview.Entry; HidePreview(); Activate(h); ScheduleRefresh(); };
             preview.OnCloseWindow = h => { Native.PostMessage(h, Native.WM_CLOSE, IntPtr.Zero, IntPtr.Zero); ScheduleRefresh(); };
             testPreview = args.Contains("--teste-janelas");
             win.PreviewMouseDown += OnMouseDown;
@@ -467,6 +467,7 @@ namespace Cais
             try { saveTimer?.Stop(); Config?.Save(); } catch { }
             try { RemoveAppBar(); } catch { }
             try { HidePreview(); } catch { }
+            try { RemoveMenuHooks(); } catch { }
             try { Taskbar.SetVisible(true); } catch { }
             foreach (var h in hooks) if (h != IntPtr.Zero) Native.UnhookWinEvent(h);
             hooks.Clear();
@@ -796,7 +797,12 @@ namespace Cais
                     Taskbar.HideOnly(mon.Handle);
             }
 
-            if (ev == 3) UpdateFullscreen();   // troca de foco: reage na hora (ex.: tecla Windows sobre um jogo)
+            if (ev == 3)
+            {
+                UpdateFullscreen();   // troca de foco: reage na hora (ex.: tecla Windows sobre um jogo)
+                Native.GetWindowThreadProcessId(hWnd, out uint pid);
+                if (pid != (uint)Process.GetCurrentProcess().Id) CloseMenu();   // outro app ganhou o foco (ex.: Alt+Tab)
+            }
             refreshTimer.Stop();
             refreshTimer.Start();
         }
@@ -1546,6 +1552,7 @@ namespace Cais
         void Click(DockEntry e, Point p, bool shift)
         {
             HidePreview();
+            suppressPreview = e;
             switch (e.Kind)
             {
                 case EntryKind.Start:
@@ -1582,6 +1589,7 @@ namespace Cais
 
         PreviewWindow preview;
         DockEntry hoverIcon, hoverCandidate;
+        DockEntry suppressPreview;   // ícone recém-clicado: a aba só volta depois que o mouse sair dele
         double hoverSince, previewCloseAt;
         bool testPreview;
 
@@ -1591,7 +1599,8 @@ namespace Cais
             if (preview == null || testPreview) return;
             var under = hover > 0.5 && !menuOpen && !overPreview ? hoverIcon : null;
             if (under != hoverCandidate) { hoverCandidate = under; hoverSince = t; }
-            bool hasWindows = under != null && under.Kind == EntryKind.App && under.Windows.Count > 0;
+            if (under != suppressPreview) suppressPreview = null;   // saiu do ícone clicado: a aba pode voltar
+            bool hasWindows = under != null && under != suppressPreview && under.Kind == EntryKind.App && under.Windows.Count > 0;
             if (preview.IsShown)
             {
                 if (overPreview || hasWindows)
@@ -1754,11 +1763,81 @@ namespace Cais
             m.Items.Add(Item("Sair do Cais", Exit));
 
             menuOpen = true;
+            openMenu = m;
             StartLoop();
-            m.Closed += (s, a) => { menuOpen = false; StartLoop(); };
+            m.Closed += (s, a) =>
+            {
+                menuOpen = false;
+                if (openMenu == m) openMenu = null;
+                RemoveMenuHooks();
+                StartLoop();
+            };
             m.Placement = PlacementMode.MousePoint;
             m.PlacementTarget = win;
             m.IsOpen = true;
+            InstallMenuHooks();
+        }
+
+        // ── fechar o menu ao clicar fora ──
+        // O Dock nunca pega o foco (para não roubar o foco do seu app), e sem foco o menu do WPF não
+        // percebe cliques fora dele. Enquanto o menu está aberto, um gancho de mouse/teclado de baixo nível
+        // fecha o menu com um clique fora dele ou com Esc. O gancho é removido assim que o menu fecha.
+
+        ContextMenu openMenu;
+        IntPtr mouseHook, keyHook;
+        Native.LowLevelProc mouseHookProc, keyHookProc;
+
+        void InstallMenuHooks()
+        {
+            RemoveMenuHooks();
+            IntPtr module = Native.GetModuleHandle(null);
+            mouseHookProc = MenuMouseHook;
+            keyHookProc = MenuKeyHook;
+            mouseHook = Native.SetWindowsHookEx(Native.WH_MOUSE_LL, mouseHookProc, module, 0);
+            keyHook = Native.SetWindowsHookEx(Native.WH_KEYBOARD_LL, keyHookProc, module, 0);
+        }
+
+        void RemoveMenuHooks()
+        {
+            if (mouseHook != IntPtr.Zero) { Native.UnhookWindowsHookEx(mouseHook); mouseHook = IntPtr.Zero; }
+            if (keyHook != IntPtr.Zero) { Native.UnhookWindowsHookEx(keyHook); keyHook = IntPtr.Zero; }
+        }
+
+        void CloseMenu()
+        {
+            if (openMenu != null) openMenu.IsOpen = false;
+        }
+
+        IntPtr MenuMouseHook(int code, IntPtr wParam, IntPtr lParam)
+        {
+            if (code >= 0 && openMenu != null)
+            {
+                int msg = wParam.ToInt32();
+                bool down = msg == 0x201 || msg == 0x204 || msg == 0x207 || msg == 0x20B;   // botão esquerdo/direito/meio/lateral
+                if (down)
+                {
+                    var pt = (Native.POINT)Marshal.PtrToStructure(lParam, typeof(Native.POINT));
+                    if (!MenuContains(pt)) win.Dispatcher.BeginInvoke(new Action(CloseMenu));
+                }
+            }
+            return Native.CallNextHookEx(mouseHook, code, wParam, lParam);
+        }
+
+        IntPtr MenuKeyHook(int code, IntPtr wParam, IntPtr lParam)
+        {
+            if (code >= 0 && openMenu != null && (wParam.ToInt32() == 0x100 || wParam.ToInt32() == 0x104))   // tecla pressionada
+            {
+                int vk = Marshal.ReadInt32(lParam);
+                if (vk == 0x1B || vk == 0x5B || vk == 0x5C) win.Dispatcher.BeginInvoke(new Action(CloseMenu));   // Esc ou tecla Windows
+            }
+            return Native.CallNextHookEx(keyHook, code, wParam, lParam);
+        }
+
+        bool MenuContains(Native.POINT pt)
+        {
+            if (!(PresentationSource.FromVisual(openMenu) is System.Windows.Interop.HwndSource src) || !Native.GetWindowRect(src.Handle, out var r))
+                return false;
+            return pt.X >= r.Left && pt.X < r.Right && pt.Y >= r.Top && pt.Y < r.Bottom;
         }
 
         static MenuItem Item(string text, Action action)

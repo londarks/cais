@@ -122,6 +122,13 @@ namespace Cais
 
         public const long WS_EX_TOPMOST = 0x8;
 
+        // Ganchos de mouse/teclado de baixo nível (usados só enquanto um menu do Dock está aberto)
+        public delegate IntPtr LowLevelProc(int code, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll")] public static extern IntPtr SetWindowsHookEx(int id, LowLevelProc proc, IntPtr module, uint threadId);
+        [DllImport("user32.dll")] public static extern bool UnhookWindowsHookEx(IntPtr hook);
+        [DllImport("user32.dll")] public static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wParam, IntPtr lParam);
+        public const int WH_KEYBOARD_LL = 13, WH_MOUSE_LL = 14;
+
         // Miniaturas ao vivo das janelas (a mesma API das prévias da barra de tarefas)
         [StructLayout(LayoutKind.Sequential)]
         public struct DWM_THUMBNAIL_PROPERTIES
